@@ -31,6 +31,8 @@ class base_instance:
     instance_url = None
     max_tokens = None
     api_key = None
+    authorization_header_key = "Authorization"
+    authorization_header_key_prefix = "Bearer "
     temperature = 0.7
     seed = 0
     overrides = {}
@@ -455,7 +457,7 @@ class base_ollama(base_instance):
         if not self.process:
             self.start()
         try:
-            response = requests.get('{}/api/tags'.format(self.instance_url), headers={'Authorization': 'Bearer {}'.format(self.api_key)})
+            response = requests.get('{}/api/tags'.format(self.instance_url), headers={self.authorization_header_key: '{}{}'.format(self.authorization_header_key_prefix, self.api_key)})
             if response.status_code == 200:
                 return json.loads(response.text).get('models')
         except Exception as e:
@@ -477,7 +479,7 @@ class base_ollama(base_instance):
         if not self.process:
             self.start()
         try:
-            response = requests.post('{}/api/show'.format(self.instance_url), headers={'Content-Type': 'application/json', 'Authorization': 'Bearer {}'.format(self.api_key)}, data=json.dumps({"name": model_name}), stream=False)
+            response = requests.post('{}/api/show'.format(self.instance_url), headers={'Content-Type': 'application/json', self.authorization_header_key: '{}{}'.format(self.authorization_header_key_prefix, self.api_key)}, data=json.dumps({"name": model_name}), stream=False)
             if response.status_code == 200:
                 return json.loads(response.text)
         except Exception as e:
@@ -488,7 +490,7 @@ class base_ollama(base_instance):
         if not self.process:
             self.start()
         try:
-            response = requests.post('{}/api/pull'.format(self.instance_url), headers={'Content-Type': 'application/json', 'Authorization': 'Bearer {}'.format(self.api_key)}, data=json.dumps({'name': model_name, 'stream': True}), stream=True)
+            response = requests.post('{}/api/pull'.format(self.instance_url), headers={'Content-Type': 'application/json', self.authorization_header_key: '{}{}'.format(self.authorization_header_key_prefix, self.api_key)}, data=json.dumps({'name': model_name, 'stream': True}), stream=True)
             if response.status_code == 200:
                 for line in response.iter_lines():
                     if line:
@@ -501,7 +503,7 @@ class base_ollama(base_instance):
         if not self.process:
             self.start()
         try:
-            return requests.get('{}/api/blobs/sha256:{}'.format(self.instance_url, sha256), headers={'Authorization': 'Bearer {}'.format(self.api_key)}).status_code != 404
+            return requests.get('{}/api/blobs/sha256:{}'.format(self.instance_url, sha256), headers={self.authorization_header_key: '{}{}'.format(self.authorization_header_key_prefix, self.api_key)}).status_code != 404
         except Exception as e:
             return False
 
@@ -509,13 +511,13 @@ class base_ollama(base_instance):
         if not self.process:
             self.start()
         with open(gguf_path, 'rb') as f:
-            requests.post('{}/api/blobs/sha256:{}'.format(self.instance_url, sha256), data=f, headers={'Authorization': 'Bearer {}'.format(self.api_key)})
+            requests.post('{}/api/blobs/sha256:{}'.format(self.instance_url, sha256), data=f, headers={self.authorization_header_key: '{}{}'.format(self.authorization_header_key_prefix, self.api_key)})
 
     def create_model(self, data:dict, callback:callable):
         if not self.process:
             self.start()
         try:
-            response = requests.post('{}/api/create'.format(self.instance_url), headers={'Content-Type': 'application/json', 'Authorization': 'Bearer {}'.format(self.api_key)}, data=json.dumps(data), stream=True)
+            response = requests.post('{}/api/create'.format(self.instance_url), headers={'Content-Type': 'application/json', self.authorization_header_key: '{}{}'.format(self.authorization_header_key_prefix, self.api_key)}, data=json.dumps(data), stream=True)
             if response.status_code == 200:
                 for line in response.iter_lines():
                     if line:
@@ -528,7 +530,7 @@ class base_ollama(base_instance):
         if not self.process:
             self.start()
         try:
-            response = requests.delete('{}/api/delete'.format(self.instance_url), headers={'Content-Type': 'application/json', 'Authorization': 'Bearer {}'.format(self.api_key)}, data=json.dumps({"name": model_name}))
+            response = requests.delete('{}/api/delete'.format(self.instance_url), headers={'Content-Type': 'application/json', self.authorization_header_key: '{}{}'.format(self.authorization_header_key_prefix, self.api_key)}, data=json.dumps({"name": model_name}))
             return response.status_code == 200
         except Exception as e:
             return False
@@ -785,6 +787,8 @@ class anthropic(base_openai):
     instance_type = 'anthropic'
     instance_type_display = 'Anthropic'
     instance_url = 'https://api.anthropic.com/v1/'
+    authorization_header_key = "x-api-key"
+    authorization_header_key_prefix = None
     limitations = ('no-system-messages')
 
 class openrouter(base_openai):
@@ -834,7 +838,7 @@ class lambda_labs(base_openai):
 
     def get_local_models(self) -> list:
         try:
-            response = requests.get('https://api.lambdalabs.com/v1/models', 
+            response = requests.get('https://api.lambdalabs.com/v1/models',
                                   headers={'Authorization': f'Bearer {self.api_key}'})
             models = []
             for model in response.json().get('data', []):
@@ -935,5 +939,3 @@ def update_instance_list():
         window.instance_listbox.select_row(row)
 
 ready_instances = [ollama_managed, ollama, chatgpt, gemini, together, venice, deepseek, openrouter, anthropic, groq, fireworks, lambda_labs, cerebras, klusterai, generic_openai]
-
-
